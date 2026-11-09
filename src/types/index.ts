@@ -39,11 +39,20 @@ export interface SyncState {
   lobby: LobbyMeta
   members: Member[]
   songs: Song[]
+  /** Ordered song ids — shared lockstep queue for the whole lobby. */
   setlistOrder: string[]
+  /** Currently live song id. */
   activeSongId: string | null
+  /**
+   * Explicit 0-based index into setlistOrder for the live slot.
+   * Kept in sync with activeSongId so every member shares the same position.
+   */
+  activeIndex: number
   scrollRatio: number
   showChords: boolean
   autoScroll: boolean
+  /** Monotonic revision — host bumps on every authoritative change. */
+  revision: number
   updatedAt: number
 }
 
@@ -52,8 +61,15 @@ export type ControlMessage =
   | { type: 'goodbye'; memberId: string }
   | { type: 'request-state' }
   | { type: 'full-state'; state: SyncState }
-  | { type: 'patch'; patch: Partial<SyncState>; fromId: string }
-  | { type: 'ping' }
+  | {
+      type: 'patch'
+      patch: Partial<SyncState>
+      fromId: string
+      /** Guest's last-seen host revision; host ignores older races when possible. */
+      baseRevision: number
+    }
+  | { type: 'ping'; t: number }
+  | { type: 'pong'; t: number }
 
 export type AppScreen = 'landing' | 'member-entry' | 'session'
 export type SessionTab = 'live' | 'setlist' | 'band'

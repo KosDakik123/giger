@@ -24,6 +24,7 @@ interface LiveViewerProps {
   onScrollRatio: (ratio: number) => void
   onPrev: () => void
   onNext: () => void
+  onJumpToIndex: (index: number) => void
 }
 
 export function LiveViewer({
@@ -40,6 +41,7 @@ export function LiveViewer({
   onScrollRatio,
   onPrev,
   onNext,
+  onJumpToIndex,
 }: LiveViewerProps) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const applyingRemote = useRef(false)
@@ -201,13 +203,32 @@ export function LiveViewer({
         </AnimatePresence>
       </div>
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+      <div className="grid grid-cols-[1fr_minmax(0,1.4fr)_1fr] items-center gap-2">
         <Button variant="secondary" onClick={onPrev} disabled={index <= 0}>
           <ChevronLeft className="h-5 w-5" /> Prev
         </Button>
-        <p className="text-center text-xs text-stage-400">
-          {index >= 0 ? `${index + 1} / ${ordered.length}` : '—'}
-        </p>
+        <label className="flex min-w-0 flex-col items-stretch gap-1">
+          <span className="text-center text-[10px] font-semibold uppercase tracking-wide text-stage-400">
+            Exact slot
+          </span>
+          <select
+            className="h-12 w-full truncate rounded-xl border border-white/10 bg-stage-900 px-2 text-sm font-semibold text-white"
+            value={index >= 0 ? index : 0}
+            disabled={ordered.length === 0}
+            onChange={(e) => onJumpToIndex(Number(e.target.value))}
+            aria-label="Jump to exact setlist position"
+          >
+            {ordered.length === 0 ? (
+              <option value={0}>No songs</option>
+            ) : (
+              ordered.map((s, i) => (
+                <option key={s.id} value={i}>
+                  #{i + 1}/{ordered.length} — {s.title}
+                </option>
+              ))
+            )}
+          </select>
+        </label>
         <Button onClick={onNext} disabled={index < 0 || index >= ordered.length - 1}>
           Next <ChevronRight className="h-5 w-5" />
         </Button>

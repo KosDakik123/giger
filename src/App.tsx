@@ -106,6 +106,7 @@ export default function App() {
             onScrollRatio={s.setScrollRatio}
             onPrev={() => s.shiftSong(-1)}
             onNext={() => s.shiftSong(1)}
+            onJumpToIndex={s.jumpToIndex}
           />
         ) : null}
 
@@ -114,10 +115,13 @@ export default function App() {
             songs={s.state.songs}
             setlistOrder={s.state.setlistOrder}
             activeSongId={s.state.activeSongId}
-            onReorder={(order) => s.publish({ setlistOrder: order })}
+            activeIndex={s.state.activeIndex}
+            onReorder={s.reorderSetlist}
+            onPlaceAt={s.placeSongAt}
             onSaveSong={s.saveSong}
             onDeleteSong={s.deleteSong}
             onSelectSong={s.selectSong}
+            onJumpToIndex={s.jumpToIndex}
           />
         ) : null}
 

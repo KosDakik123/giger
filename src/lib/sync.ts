@@ -1,5 +1,6 @@
 import Peer, { type DataConnection } from 'peerjs'
 import type { ControlMessage, Member, SyncState } from '@/types'
+import { withActiveSlot } from '@/lib/setlist'
 
 export type SyncStatus = 'idle' | 'connecting' | 'connected' | 'hosting' | 'solo' | 'error'
 
@@ -10,17 +11,22 @@ export interface SyncHandlers {
 }
 
 /**
- * PeerJS lobby mesh: host owns authoritative state; guests send patches.
- * Falls back to local-only when the broker is unreachable.
+ * PeerJS lobby: host is authoritative.
+ * - Guests send patches to the host only (reliable DataConnection).
+ * - Host merges, bumps revision, and full-state broadcasts to everyone.
+ * - Periodic host resync keeps setlist order + active slot lockstep.
  */
 export class LobbySync {
   private peer: Peer | null = null
   private connections = new Map<string, DataConnection>()
+  private hostConn: DataConnection | null = null
   private mode: 'host' | 'guest' | 'solo' = 'solo'
   private self: Member | null = null
   private state: SyncState | null = null
   private handlers: SyncHandlers
   private destroyed = false
+  private resyncTimer: number | null = null
+  private heartbeatTimer: number | null = null
 
   constructor(handlers: SyncHandlers) {
     this.handlers = handlers
@@ -30,17 +36,22 @@ export class LobbySync {
     return this.mode
   }
 
+  getRevision() {
+    return this.state?.revision ?? 0
+  }
+
   async startHost(peerId: string, self: Member, initial: SyncState) {
     this.mode = 'host'
     this.self = self
-    this.state = initial
+    this.state = normalizeState(initial)
     this.handlers.onStatus('connecting', 'Opening lobby channel…')
 
     try {
       await this.openPeer(peerId)
       if (this.destroyed) return
-      this.handlers.onStatus('hosting', 'Lobby live — share name & PIN')
+      this.handlers.onStatus('hosting', 'Lobby live — setlist syncs to every member')
       this.handlers.onState(this.state)
+      this.startHostResync()
     } catch (err) {
       console.warn('PeerJS host failed, solo fallback', err)
       this.mode = 'solo'
@@ -48,7 +59,7 @@ export class LobbySync {
         'solo',
         'Could not reach sync broker — practicing solo. Local changes still save.',
       )
-      this.handlers.onState(initial)
+      this.handlers.onState(this.state)
     }
   }
 
@@ -61,11 +72,13 @@ export class LobbySync {
       await this.openPeer()
       if (this.destroyed) return
       const conn = this.peer!.connect(hostPeerId, { reliable: true })
-      this.wireConnection(conn)
-      await waitOpen(conn, 12000)
-      conn.send({ type: 'hello', member: self } satisfies ControlMessage)
-      conn.send({ type: 'request-state' } satisfies ControlMessage)
-      this.handlers.onStatus('connected', 'Synced with lobby leader')
+      this.hostConn = conn
+      this.wireConnection(conn, true)
+      await waitOpen(conn, 14000)
+      this.send(conn, { type: 'hello', member: self })
+      this.send(conn, { type: 'request-state' })
+      this.handlers.onStatus('connected', 'Live lockstep with lobby leader')
+      this.startGuestHeartbeat()
     } catch (err) {
       console.warn('PeerJS guest failed', err)
       this.handlers.onStatus(
@@ -79,47 +92,50 @@ export class LobbySync {
   startSolo(self: Member, initial: SyncState) {
     this.mode = 'solo'
     this.self = self
-    this.state = initial
+    this.state = normalizeState(initial)
     this.handlers.onStatus('solo', 'Solo rehearsal — changes stay on this device')
-    this.handlers.onState(initial)
+    this.handlers.onState(this.state)
   }
 
-  /** Host / solo apply local mutations and broadcast. Guests send patches upstream. */
+  /** Host / solo apply; guests forward patch to host. */
   publish(patch: Partial<SyncState>) {
     if (!this.self) return
 
     if (this.mode === 'guest') {
-      this.broadcast({ type: 'patch', patch, fromId: this.self.id })
+      const baseRevision = this.state?.revision ?? 0
+      const msg: ControlMessage = {
+        type: 'patch',
+        patch: stripEphemeral(patch),
+        fromId: this.self.id,
+        baseRevision,
+      }
+      if (this.hostConn?.open) {
+        this.send(this.hostConn, msg)
+      } else {
+        // Retry once connections settle
+        window.setTimeout(() => {
+          if (this.hostConn?.open) this.send(this.hostConn, msg)
+        }, 200)
+      }
       return
     }
 
-    if (!this.state) return
-    this.state = {
-      ...this.state,
-      ...patch,
-      updatedAt: Date.now(),
-      members: patch.members ?? this.state.members,
-    }
-    this.handlers.onState(this.state)
-    this.broadcast({ type: 'full-state', state: this.state })
-  }
-
-  replaceState(state: SyncState) {
-    this.state = state
-    if (this.mode === 'host') {
-      this.broadcast({ type: 'full-state', state })
-    }
+    this.applyAuthoritative(patch)
   }
 
   leave() {
-    if (this.self && this.mode === 'guest') {
-      this.broadcast({ type: 'goodbye', memberId: this.self.id })
+    if (this.self && this.mode === 'guest' && this.hostConn?.open) {
+      this.send(this.hostConn, { type: 'goodbye', memberId: this.self.id })
     }
     this.destroy()
   }
 
   destroy() {
     this.destroyed = true
+    if (this.resyncTimer) window.clearInterval(this.resyncTimer)
+    if (this.heartbeatTimer) window.clearInterval(this.heartbeatTimer)
+    this.resyncTimer = null
+    this.heartbeatTimer = null
     for (const conn of this.connections.values()) {
       try {
         conn.close()
@@ -128,6 +144,7 @@ export class LobbySync {
       }
     }
     this.connections.clear()
+    this.hostConn = null
     if (this.peer) {
       try {
         this.peer.destroy()
@@ -138,9 +155,31 @@ export class LobbySync {
     this.peer = null
   }
 
+  private applyAuthoritative(patch: Partial<SyncState>) {
+    if (!this.state) return
+    const mergedMembers = patch.members ?? this.state.members
+    const slot = withActiveSlot(this.state, {
+      setlistOrder: patch.setlistOrder,
+      activeSongId: patch.activeSongId,
+      activeIndex: patch.activeIndex,
+    })
+    this.state = {
+      ...this.state,
+      ...stripEphemeral(patch),
+      ...slot,
+      members: mergedMembers,
+      revision: this.state.revision + 1,
+      updatedAt: Date.now(),
+    }
+    this.handlers.onState(this.state)
+    this.broadcast({ type: 'full-state', state: this.state })
+  }
+
   private openPeer(id?: string) {
     return new Promise<void>((resolve, reject) => {
-      const peer = id ? new Peer(id) : new Peer()
+      const peer = id
+        ? new Peer(id, { debug: 0 })
+        : new Peer({ debug: 0 })
       this.peer = peer
 
       const timer = window.setTimeout(() => {
@@ -154,24 +193,27 @@ export class LobbySync {
 
       peer.on('error', (err) => {
         window.clearTimeout(timer)
-        const message = err?.type === 'unavailable-id'
-          ? 'That lobby is already open somewhere. Close the other tab or pick a new name.'
-          : err?.message || 'PeerJS error'
+        const anyErr = err as { type?: string; message?: string }
+        const message =
+          anyErr?.type === 'unavailable-id'
+            ? 'That lobby is already open somewhere. Close the other tab or pick a new name.'
+            : anyErr?.message || 'PeerJS error'
         reject(new Error(message))
       })
 
       peer.on('connection', (conn) => {
-        this.wireConnection(conn)
+        this.wireConnection(conn, false)
       })
     })
   }
 
-  private wireConnection(conn: DataConnection) {
+  private wireConnection(conn: DataConnection, isHostLink: boolean) {
     conn.on('open', () => {
       this.connections.set(conn.peer, conn)
+      if (isHostLink) this.hostConn = conn
       this.handlers.onMembersHint?.(this.connections.size)
       if (this.mode === 'host' && this.state) {
-        conn.send({ type: 'full-state', state: this.state } satisfies ControlMessage)
+        this.send(conn, { type: 'full-state', state: this.state })
       }
     })
 
@@ -181,7 +223,14 @@ export class LobbySync {
 
     conn.on('close', () => {
       this.connections.delete(conn.peer)
+      if (this.hostConn?.peer === conn.peer) this.hostConn = null
       this.handlers.onMembersHint?.(this.connections.size)
+      if (this.mode === 'guest') {
+        this.handlers.onStatus(
+          'error',
+          'Lost lobby leader — ask them to keep BEND open, then rejoin.',
+        )
+      }
     })
   }
 
@@ -195,13 +244,13 @@ export class LobbySync {
           const members = exists
             ? this.state.members.map((m) => (m.id === msg.member.id ? msg.member : m))
             : [...this.state.members, { ...msg.member, isLeader: false }]
-          this.publish({ members })
+          this.applyAuthoritative({ members })
         }
         break
       }
       case 'goodbye': {
         if (this.mode === 'host' && this.state) {
-          this.publish({
+          this.applyAuthoritative({
             members: this.state.members.filter((m) => m.id !== msg.memberId),
           })
         }
@@ -209,23 +258,43 @@ export class LobbySync {
       }
       case 'request-state': {
         if (this.mode === 'host' && this.state) {
-          conn.send({ type: 'full-state', state: this.state } satisfies ControlMessage)
+          this.send(conn, { type: 'full-state', state: this.state })
         }
         break
       }
       case 'full-state': {
-        this.state = msg.state
-        this.handlers.onState(msg.state)
+        const incoming = normalizeState(msg.state)
+        // Guests always take host truth (higher or equal revision wins races)
+        if (
+          this.mode === 'guest' &&
+          this.state &&
+          incoming.revision < this.state.revision
+        ) {
+          break
+        }
+        this.state = incoming
+        this.handlers.onState(incoming)
+        if (this.mode === 'guest') {
+          this.handlers.onStatus('connected', 'Live lockstep with lobby leader')
+        }
         break
       }
       case 'patch': {
         if (this.mode === 'host' && this.state) {
-          // Guests may request control — host merges & rebroadcasts
-          const nextMembers =
-            msg.patch.members ??
-            this.state.members
-          this.publish({ ...msg.patch, members: nextMembers })
+          // Accept guest control; revision clock is host-owned
+          this.applyAuthoritative({
+            ...msg.patch,
+            members: msg.patch.members ?? this.state.members,
+          })
         }
+        break
+      }
+      case 'ping': {
+        this.send(conn, { type: 'pong', t: msg.t })
+        break
+      }
+      case 'pong': {
+        // Host liveness confirmed
         break
       }
       default:
@@ -233,16 +302,58 @@ export class LobbySync {
     }
   }
 
+  private startHostResync() {
+    if (this.resyncTimer) window.clearInterval(this.resyncTimer)
+    this.resyncTimer = window.setInterval(() => {
+      if (this.mode !== 'host' || !this.state || this.connections.size === 0) return
+      this.broadcast({ type: 'full-state', state: this.state })
+    }, 2500)
+  }
+
+  private startGuestHeartbeat() {
+    if (this.heartbeatTimer) window.clearInterval(this.heartbeatTimer)
+    this.heartbeatTimer = window.setInterval(() => {
+      if (!this.hostConn?.open) return
+      this.send(this.hostConn, { type: 'ping', t: Date.now() })
+      // Soft re-request keeps late joiners / missed packets aligned
+      this.send(this.hostConn, { type: 'request-state' })
+    }, 4000)
+  }
+
   private broadcast(msg: ControlMessage) {
     for (const conn of this.connections.values()) {
-      if (conn.open) {
-        try {
-          conn.send(msg)
-        } catch {
-          // ignore flaky peers
-        }
-      }
+      this.send(conn, msg)
     }
+  }
+
+  private send(conn: DataConnection, msg: ControlMessage) {
+    if (!conn.open) return
+    try {
+      conn.send(msg)
+    } catch {
+      // ignore flaky peers
+    }
+  }
+}
+
+function stripEphemeral(patch: Partial<SyncState>): Partial<SyncState> {
+  const next = { ...patch }
+  delete next.revision
+  delete next.updatedAt
+  return next
+}
+
+function normalizeState(state: SyncState): SyncState {
+  const slot = withActiveSlot(state, {
+    setlistOrder: state.setlistOrder,
+    activeSongId: state.activeSongId,
+    activeIndex: state.activeIndex ?? -1,
+  })
+  return {
+    ...state,
+    ...slot,
+    revision: state.revision ?? 0,
+    updatedAt: state.updatedAt ?? Date.now(),
   }
 }
 

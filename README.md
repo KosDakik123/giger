@@ -33,11 +33,18 @@ Preview also serves on port **4731**.
 ## How lobby sync works
 
 1. Lobby name + PIN are hashed into a stable PeerJS host id (`bend-…`).
-2. The **creator** hosts that peer id and holds authoritative state (songs, setlist order, active song, scroll ratio, chord/auto-scroll toggles, members).
-3. **Joiners** connect to the same host id, receive full state, and send control patches (song changes, scroll, edits). The host merges and rebroadcasts.
-4. Keep the leader’s tab open while others are connected.
-5. **Practice solo** skips PeerJS and stores state in `localStorage`.
-6. If PeerJS can’t be reached when hosting, BEND falls back to solo mode so rehearsal still works offline.
+2. The **creator** hosts that peer id and holds authoritative state: songs, **setlist order**, **active index/slot**, active song, scroll ratio, chord/auto-scroll toggles, members — each change bumps a monotonic **revision**.
+3. **Joiners** open a reliable PeerJS connection to the host, receive full state, and send patches for song jumps, exact slot placement, drag reorder, and scroll. The host merges and **full-state broadcasts** to everyone.
+4. Host also **re-pushes full state every ~2.5s**; guests heartbeat / request-state every ~4s so late packets still lockstep.
+5. Keep the leader’s tab open while others are connected.
+6. **Practice solo** skips PeerJS and stores state in `localStorage`.
+7. If PeerJS can’t be reached when hosting, BEND falls back to solo mode so rehearsal still works offline.
+
+### Exact placement
+
+- **Drag-and-drop** and **up/down arrows** reorder the shared setlist.
+- Each row has a **Slot #** select to move that song to an exact position.
+- Live view and setlist both have a **Jump live to** / **Exact slot** picker so any member can select a specific setlist index — synced lobby-wide.
 
 > PeerJS quirk: peer ids can stay “taken” briefly if a tab crashed. Close leftover tabs or wait a moment / use a new lobby name.
 
