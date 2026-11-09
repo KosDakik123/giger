@@ -2,19 +2,31 @@ import { motion } from 'framer-motion'
 import { Headphones, KeyRound, Plus, Users } from 'lucide-react'
 import { useState } from 'react'
 import { FloatingNotes } from '@/components/decor/FloatingNotes'
+import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import type { ThemeId } from '@/lib/themes'
 
 interface LandingScreenProps {
   busy: boolean
   error: string | null
+  theme: ThemeId
+  onThemeChange: (theme: ThemeId) => void
   onCreate: (name: string, pin: string) => void
   onJoin: (name: string, pin: string) => void
   onSolo: () => void
 }
 
-export function LandingScreen({ busy, error, onCreate, onJoin, onSolo }: LandingScreenProps) {
+export function LandingScreen({
+  busy,
+  error,
+  theme,
+  onThemeChange,
+  onCreate,
+  onJoin,
+  onSolo,
+}: LandingScreenProps) {
   const [mode, setMode] = useState<'create' | 'join'>('create')
   const [name, setName] = useState('')
   const [pin, setPin] = useState('')
@@ -49,20 +61,24 @@ export function LandingScreen({ busy, error, onCreate, onJoin, onSolo }: Landing
         <p className="mb-3 text-sm font-medium uppercase tracking-[0.22em] text-amp-soft/90">
           Live rehearsal · stage sync
         </p>
-        <h1 className="font-display text-6xl font-extrabold leading-none tracking-tight text-white sm:text-7xl">
-          BEND
+        <h1 className="font-display text-6xl font-extrabold leading-none tracking-tight text-stage-100 sm:text-7xl">
+          GIGer
         </h1>
         <p className="mt-4 max-w-md text-base leading-relaxed text-stage-200">
           One lobby. One setlist. Lyrics that stay in sync across every phone on stage — no app
           install, just the browser.
         </p>
 
-        <div className="mt-8 glass rounded-3xl p-5 shadow-2xl">
+        <div className="mt-6 glass rounded-3xl p-4">
+          <ThemeSwitcher theme={theme} onChange={onThemeChange} />
+        </div>
+
+        <div className="mt-4 glass rounded-3xl p-5 shadow-2xl">
           <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl bg-stage-900/70 p-1">
             <button
               type="button"
               className={`flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition ${
-                mode === 'create' ? 'bg-amp text-stage-950' : 'text-stage-300 hover:text-white'
+                mode === 'create' ? 'bg-amp text-stage-950' : 'text-stage-400 hover:text-stage-100'
               }`}
               onClick={() => setMode('create')}
             >
@@ -71,7 +87,7 @@ export function LandingScreen({ busy, error, onCreate, onJoin, onSolo }: Landing
             <button
               type="button"
               className={`flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition ${
-                mode === 'join' ? 'bg-amp text-stage-950' : 'text-stage-300 hover:text-white'
+                mode === 'join' ? 'bg-amp text-stage-950' : 'text-stage-400 hover:text-stage-100'
               }`}
               onClick={() => setMode('join')}
             >
@@ -122,7 +138,7 @@ export function LandingScreen({ busy, error, onCreate, onJoin, onSolo }: Landing
         </div>
 
         <div className="mt-5 flex flex-col items-center gap-3">
-          <Button variant="ghost" className="text-stage-300" disabled={busy} onClick={onSolo}>
+          <Button variant="ghost" className="text-stage-400" disabled={busy} onClick={onSolo}>
             <Headphones className="h-4 w-4" /> Practice solo (no sync)
           </Button>
           <p className="text-center text-xs text-stage-400">

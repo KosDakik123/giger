@@ -1,13 +1,14 @@
-# BEND
+# GIGer
 
-**BEND** is a static single-page app for live band rehearsal and gigs. Create a lobby, share a name + PIN, and keep the active song, lyrics scroll, and setlist in sync across phones and laptops — no native install, no account server.
+**GIGer** is a static single-page app for live band rehearsal and gigs. Create a lobby, share a name + PIN, and keep the active song, lyrics scroll, and setlist in sync across phones and laptops — no native install, no account server.
 
 ## Features
 
 - **Lobby / room** — create or join with lobby name + PIN; enter with name, role, and a cute SVG stage character
 - **Role flavor** — playful titles like “Shred King” and “The Beat Master”
-- **Setlist & library** — add/edit songs (title, artist, lyrics, chords, key, tempo, notes); drag-and-drop + arrow reorder; preset gig-ready songs included
-- **Live viewer** — high-contrast dark stage lyrics, chord toggle, prev/next, auto-scroll; creator is Leader (others can still control for rehearsal ease)
+- **Setlist & library** — add/edit songs (title, artist, lyrics, chords, key, tempo, notes); drag-and-drop + arrow reorder; **exact slot** placement and jump-to-index; preset gig-ready songs included
+- **Live viewer** — high-contrast stage lyrics, chord toggle, prev/next, exact-slot picker, auto-scroll; creator is Leader (others can still control for rehearsal ease)
+- **Themes** — Stage Dark, Neon Pit, Daylight, Ember — preference persists and **syncs across the lobby**
 - **Sync** — PeerJS (free cloud broker) for cross-device sync; localStorage for persistence and solo mode if the broker is unreachable
 
 ## Stack
@@ -32,13 +33,13 @@ Preview also serves on port **4731**.
 
 ## How lobby sync works
 
-1. Lobby name + PIN are hashed into a stable PeerJS host id (`bend-…`).
-2. The **creator** hosts that peer id and holds authoritative state: songs, **setlist order**, **active index/slot**, active song, scroll ratio, chord/auto-scroll toggles, members — each change bumps a monotonic **revision**.
-3. **Joiners** open a reliable PeerJS connection to the host, receive full state, and send patches for song jumps, exact slot placement, drag reorder, and scroll. The host merges and **full-state broadcasts** to everyone.
+1. Lobby name + PIN are hashed into a stable PeerJS host id (`giger-…`).
+2. The **creator** hosts that peer id and holds authoritative state: songs, **setlist order**, **active index/slot**, active song, scroll ratio, chord/auto-scroll toggles, **theme**, members — each change bumps a monotonic **revision**.
+3. **Joiners** open a reliable PeerJS connection to the host, receive full state, and send patches for song jumps, exact slot placement, drag reorder, theme, and scroll. The host merges and **full-state broadcasts** to everyone.
 4. Host also **re-pushes full state every ~2.5s**; guests heartbeat / request-state every ~4s so late packets still lockstep.
 5. Keep the leader’s tab open while others are connected.
 6. **Practice solo** skips PeerJS and stores state in `localStorage`.
-7. If PeerJS can’t be reached when hosting, BEND falls back to solo mode so rehearsal still works offline.
+7. If PeerJS can’t be reached when hosting, GIGer falls back to solo mode so rehearsal still works offline.
 
 ### Exact placement
 
@@ -66,6 +67,8 @@ Preview also serves on port **4731**.
 
 4. Open the site URL on stage phones — add to Home Screen optional; it remains a browser SPA.
 
+> This Origin repo (`david-kos/kickstart`) needs a **GitHub mirror/remote** with Pages enabled for `*.github.io` hosting. Until then, use Cursor **publish-app** (confirm in the Publish dialog, choose **public** for a shareable link).
+
 Origin / any static host: upload `dist/` the same way; relative `base` keeps links intact.
 
 ## Project scripts
@@ -79,4 +82,4 @@ Origin / any static host: upload `dist/` the same way; relative `base` keeps lin
 
 ## License
 
-Built for band practice. Use it, bend it, don’t break the tempo.
+Built for band practice. Gig on.

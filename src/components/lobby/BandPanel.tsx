@@ -1,7 +1,9 @@
 import { Crown, LogOut, Radio } from 'lucide-react'
 import { MemberAvatar } from '@/components/avatars/MemberAvatar'
+import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher'
 import { Button } from '@/components/ui/button'
 import type { SyncStatus } from '@/lib/sync'
+import type { ThemeId } from '@/lib/themes'
 import { ROLE_FLAVOR } from '@/lib/roles'
 import type { Member } from '@/types'
 
@@ -12,6 +14,8 @@ interface BandPanelProps {
   pin: string
   status: SyncStatus
   statusDetail?: string
+  theme: ThemeId
+  onThemeChange: (theme: ThemeId) => void
   onLeave: () => void
 }
 
@@ -22,12 +26,14 @@ export function BandPanel({
   pin,
   status,
   statusDetail,
+  theme,
+  onThemeChange,
   onLeave,
 }: BandPanelProps) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <div>
-        <h2 className="font-display text-2xl font-bold text-white">The band</h2>
+        <h2 className="font-display text-2xl font-bold text-stage-100">The band</h2>
         <p className="text-sm text-stage-400">
           Lobby <span className="text-amp-soft">{lobbyName}</span> · PIN {pin}
         </p>
@@ -38,17 +44,21 @@ export function BandPanel({
           <Radio className="h-5 w-5" />
         </div>
         <div>
-          <p className="font-semibold text-white">{statusLabel(status)}</p>
-          <p className="text-sm text-stage-300">
+          <p className="font-semibold text-stage-100">{statusLabel(status)}</p>
+          <p className="text-sm text-stage-400">
             {statusDetail ||
-              'Active song, scroll position, and queue stay synced for everyone in this lobby.'}
+              'Active song, setlist order, scroll, and theme stay synced for everyone in this lobby.'}
           </p>
         </div>
       </div>
 
+      <div className="glass rounded-2xl p-4">
+        <ThemeSwitcher theme={theme} onChange={onThemeChange} />
+      </div>
+
       {members.length === 0 ? (
         <div className="glass flex flex-1 items-center justify-center rounded-3xl px-6 text-center">
-          <p className="text-sm text-stage-300">No members yet — share the lobby name and PIN.</p>
+          <p className="text-sm text-stage-400">No members yet — share the lobby name and PIN.</p>
         </div>
       ) : (
         <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto">
@@ -58,7 +68,7 @@ export function BandPanel({
               <li key={m.id} className="glass flex items-center gap-3 rounded-2xl p-3">
                 <MemberAvatar id={m.avatarId} size={52} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-display font-bold text-white">
+                  <p className="truncate font-display font-bold text-stage-100">
                     {m.name}
                     {m.id === selfId ? (
                       <span className="ml-2 text-xs font-medium text-stage-400">(you)</span>

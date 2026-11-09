@@ -100,7 +100,7 @@ export function LiveViewer({
                   ROLE_FLAVOR[self.role].title
                 )}
               </p>
-              <p className="truncate font-display text-sm font-bold text-white">
+              <p className="truncate font-display text-sm font-bold text-stage-100">
                 {song ? song.title : 'No song selected'}
               </p>
             </div>
@@ -122,7 +122,7 @@ export function LiveViewer({
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 overflow-hidden rounded-3xl border border-white/10 bg-black/45 stage-grid">
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-3xl border border-white/10 lyrics-wall stage-grid">
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-amp/10 to-transparent"
           aria-hidden
@@ -138,7 +138,7 @@ export function LiveViewer({
           >
             {!song ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-                <p className="font-display text-2xl font-bold text-white">Stage is quiet</p>
+                <p className="font-display text-2xl font-bold text-stage-100">Stage is quiet</p>
                 <p className="max-w-sm text-sm text-stage-300">
                   Add songs in the Setlist tab or pick one from the preset list to light up the
                   lyrics wall.
@@ -157,7 +157,7 @@ export function LiveViewer({
                 }}
               >
                 <div className="mb-8 text-center">
-                  <h2 className="font-display text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
+                  <h2 className="font-display text-3xl font-extrabold tracking-tight text-stage-100 sm:text-5xl">
                     {song.title}
                   </h2>
                   <p className="mt-2 text-sm text-stage-300 sm:text-base">
@@ -212,7 +212,7 @@ export function LiveViewer({
             Exact slot
           </span>
           <select
-            className="h-12 w-full truncate rounded-xl border border-white/10 bg-stage-900 px-2 text-sm font-semibold text-white"
+            className="h-12 w-full truncate rounded-xl border border-white/10 bg-stage-900 px-2 text-sm font-semibold text-stage-100"
             value={index >= 0 ? index : 0}
             disabled={ordered.length === 0}
             onChange={(e) => onJumpToIndex(Number(e.target.value))}

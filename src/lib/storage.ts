@@ -1,7 +1,9 @@
 import type { SyncState } from '@/types'
 
-const SESSION_KEY = 'bend.session.v1'
-const SOLO_KEY = 'bend.solo.v1'
+const SESSION_KEY = 'giger.session.v1'
+const SOLO_KEY = 'giger.solo.v1'
+const LEGACY_SESSION = 'bend.session.v1'
+const LEGACY_SOLO = 'bend.solo.v1'
 
 export interface PersistedSession {
   mode: 'host' | 'guest' | 'solo'
@@ -19,7 +21,7 @@ export function saveSession(session: PersistedSession) {
 
 export function loadSession(): PersistedSession | null {
   try {
-    const raw = localStorage.getItem(SESSION_KEY)
+    const raw = localStorage.getItem(SESSION_KEY) || localStorage.getItem(LEGACY_SESSION)
     if (!raw) return null
     return JSON.parse(raw) as PersistedSession
   } catch {
@@ -30,6 +32,7 @@ export function loadSession(): PersistedSession | null {
 export function clearSession() {
   try {
     localStorage.removeItem(SESSION_KEY)
+    localStorage.removeItem(LEGACY_SESSION)
   } catch {
     // ignore
   }
@@ -45,7 +48,7 @@ export function saveSoloState(state: SyncState) {
 
 export function loadSoloState(): SyncState | null {
   try {
-    const raw = localStorage.getItem(SOLO_KEY)
+    const raw = localStorage.getItem(SOLO_KEY) || localStorage.getItem(LEGACY_SOLO)
     if (!raw) return null
     return JSON.parse(raw) as SyncState
   } catch {

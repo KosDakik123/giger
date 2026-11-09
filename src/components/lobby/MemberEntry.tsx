@@ -34,7 +34,7 @@ export function MemberEntry({
     <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-5 py-10">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <p className="text-sm uppercase tracking-[0.18em] text-amp-soft">Entering lobby</p>
-        <h1 className="mt-2 font-display text-4xl font-bold text-white">{lobbyName}</h1>
+        <h1 className="mt-2 font-display text-4xl font-bold text-stage-100">{lobbyName}</h1>
         <p className="mt-2 text-stage-300">
           Pick a name, role, and stage creature. {isLeader ? 'You’re the lobby leader.' : 'Follow the leader’s setlist sync.'}
         </p>

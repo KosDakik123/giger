@@ -5,18 +5,20 @@ import { MemberEntry } from '@/components/lobby/MemberEntry'
 import { LiveViewer } from '@/components/live/LiveViewer'
 import { SetlistManager } from '@/components/setlist/SetlistManager'
 import { FloatingNotes } from '@/components/decor/FloatingNotes'
-import { useBendSession } from '@/hooks/useBendSession'
+import { useGigerSession } from '@/hooks/useGigerSession'
 import { cn } from '@/lib/utils'
 import type { SessionTab } from '@/types'
 
 export default function App() {
-  const s = useBendSession()
+  const s = useGigerSession()
 
   if (s.screen === 'landing') {
     return (
       <LandingScreen
         busy={s.busy}
         error={s.error}
+        theme={s.theme}
+        onThemeChange={s.setLobbyTheme}
         onCreate={s.beginCreate}
         onJoin={s.beginJoin}
         onSolo={s.beginSolo}
@@ -42,8 +44,8 @@ export default function App() {
       <div className="relative flex min-h-dvh items-center justify-center px-6">
         <FloatingNotes />
         <div className="glass relative z-10 max-w-sm rounded-3xl p-6 text-center">
-          <p className="font-display text-2xl font-bold text-white">Tuning up…</p>
-          <p className="mt-2 text-sm text-stage-300">
+          <p className="font-display text-2xl font-bold text-stage-100">Tuning up…</p>
+          <p className="mt-2 text-sm text-stage-400">
             {s.statusDetail || 'Waiting for lobby sync. Keep this tab open.'}
           </p>
           {s.error ? <p className="mt-3 text-sm text-rose-glow">{s.error}</p> : null}
@@ -69,8 +71,8 @@ export default function App() {
     <div className="mx-auto flex h-dvh w-full max-w-5xl flex-col px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
       <header className="mb-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-display text-2xl font-extrabold tracking-tight text-white">
-            BEND
+          <p className="font-display text-2xl font-extrabold tracking-tight text-stage-100">
+            GIGer
           </p>
           <p className="truncate text-xs text-stage-400">
             {s.state.lobby.name}
@@ -133,6 +135,8 @@ export default function App() {
             pin={s.state.lobby.pin}
             status={s.status}
             statusDetail={s.statusDetail}
+            theme={s.theme}
+            onThemeChange={s.setLobbyTheme}
             onLeave={s.leave}
           />
         ) : null}
@@ -170,7 +174,7 @@ function TabButton({
       onClick={onClick}
       className={cn(
         'flex h-12 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition',
-        active ? 'bg-amp text-stage-950' : 'text-stage-300 hover:text-white',
+        active ? 'bg-amp text-stage-950' : 'text-stage-400 hover:text-stage-100',
       )}
     >
       <Icon className="h-4 w-4" />

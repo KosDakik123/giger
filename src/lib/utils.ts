@@ -18,7 +18,7 @@ export async function lobbyPeerId(name: string, pin: string): Promise<string> {
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
     .slice(0, 28)
-  return `bend-${hex}`
+  return `giger-${hex}`
 }
 
 export function formatBpm(bpm?: number | null) {

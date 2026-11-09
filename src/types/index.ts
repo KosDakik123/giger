@@ -35,6 +35,8 @@ export interface LobbyMeta {
   createdAt: number
 }
 
+export type ThemeId = 'stage' | 'neon' | 'daylight' | 'ember'
+
 export interface SyncState {
   lobby: LobbyMeta
   members: Member[]
@@ -51,6 +53,8 @@ export interface SyncState {
   scrollRatio: number
   showChords: boolean
   autoScroll: boolean
+  /** Shared lobby look — Stage Dark, Neon Pit, Daylight, Ember. */
+  theme: ThemeId
   /** Monotonic revision — host bumps on every authoritative change. */
   revision: number
   updatedAt: number

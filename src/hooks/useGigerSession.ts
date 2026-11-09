@@ -3,6 +3,7 @@ import { createPresetSongs, defaultSetlistOrder } from '@/data/presets'
 import { clearSession, loadSession, saveSession, saveSoloState } from '@/lib/storage'
 import { moveSongToSlot, withActiveSlot } from '@/lib/setlist'
 import { LobbySync, type SyncStatus } from '@/lib/sync'
+import { DEFAULT_THEME, applyTheme, loadStoredTheme, type ThemeId } from '@/lib/themes'
 import { lobbyPeerId, uid } from '@/lib/utils'
 import type {
   AppScreen,
@@ -21,7 +22,7 @@ interface PendingLobby {
   intent: 'host' | 'guest' | 'solo'
 }
 
-export function useBendSession() {
+export function useGigerSession() {
   const syncRef = useRef<LobbySync | null>(null)
   const scrollTimer = useRef<number | null>(null)
   const localRevision = useRef(0)
@@ -35,8 +36,19 @@ export function useBendSession() {
   const [pending, setPending] = useState<PendingLobby | null>(null)
   const [self, setSelf] = useState<Member | null>(null)
   const [state, setState] = useState<SyncState | null>(null)
+  const [theme, setTheme] = useState<ThemeId>(() => loadStoredTheme())
   const [reacting, setReacting] = useState(false)
   const prevSong = useRef<string | null>(null)
+
+  useEffect(() => {
+    applyTheme(theme)
+  }, [theme])
+
+  useEffect(() => {
+    if (state?.theme && state.theme !== theme) {
+      setTheme(state.theme)
+    }
+  }, [state?.theme, theme])
 
   useEffect(() => {
     const saved = loadSession()
@@ -158,6 +170,7 @@ export function useBendSession() {
       scrollRatio: 0,
       showChords: true,
       autoScroll: false,
+      theme: theme || DEFAULT_THEME,
       revision: 1,
       updatedAt: Date.now(),
     }
@@ -184,7 +197,7 @@ export function useBendSession() {
       setError(
         e instanceof Error
           ? e.message
-          : 'Join failed. Confirm the lobby name/PIN and that the leader still has BEND open.',
+          : 'Join failed. Confirm the lobby name/PIN and that the leader still has GIGer open.',
       )
       setScreen('landing')
       setPending(null)
@@ -315,6 +328,14 @@ export function useBendSession() {
     })
   }
 
+  const setLobbyTheme = (next: ThemeId) => {
+    setTheme(next)
+    applyTheme(next)
+    if (state) {
+      publish({ theme: next })
+    }
+  }
+
   const leave = () => {
     syncRef.current?.leave()
     syncRef.current = null
@@ -347,6 +368,7 @@ export function useBendSession() {
     state,
     activeSong,
     reacting,
+    theme,
     beginCreate,
     beginJoin,
     beginSolo,
@@ -361,6 +383,7 @@ export function useBendSession() {
     placeSongAt,
     saveSong,
     deleteSong,
+    setLobbyTheme,
     leave,
   }
 }

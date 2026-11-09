@@ -1,26 +1,144 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap');
 @import 'tailwindcss';
 
+/* Semantic tokens — overridden per data-theme */
+:root,
+[data-theme='stage'] {
+  --stage-950: #07060c;
+  --stage-900: #0e0c16;
+  --stage-850: #15121f;
+  --stage-800: #1c1829;
+  --stage-700: #2a243a;
+  --stage-600: #3d3554;
+  --stage-400: #9b92b3;
+  --stage-200: #ddd7ec;
+  --stage-100: #f3effa;
+  --amp: #ff8a3d;
+  --amp-soft: #ffb27a;
+  --neon: #3dffc0;
+  --neon-soft: #8affd9;
+  --rose-glow: #ff5d8f;
+  --violet-mist: #7b6cff;
+  --glass-bg: rgb(22 18 34 / 0.72);
+  --glass-border: rgb(255 255 255 / 0.08);
+  --body-bg:
+    radial-gradient(1200px 600px at 10% -10%, rgb(255 138 61 / 0.16), transparent 55%),
+    radial-gradient(900px 500px at 95% 0%, rgb(61 255 192 / 0.1), transparent 50%),
+    radial-gradient(700px 500px at 50% 110%, rgb(123 108 255 / 0.14), transparent 55%),
+    linear-gradient(165deg, #090711 0%, #120f1c 45%, #0a0912 100%);
+  --selection-bg: rgb(255 138 61 / 0.35);
+  --selection-fg: #fff;
+  --lyrics-wall: rgb(0 0 0 / 0.45);
+  color-scheme: dark;
+}
+
+[data-theme='neon'] {
+  --stage-950: #04040a;
+  --stage-900: #0a0b14;
+  --stage-850: #101225;
+  --stage-800: #171a33;
+  --stage-700: #252a4d;
+  --stage-600: #3a4170;
+  --stage-400: #9aa3d4;
+  --stage-200: #d7dcf7;
+  --stage-100: #eef0ff;
+  --amp: #ff2bd6;
+  --amp-soft: #ff7ae8;
+  --neon: #2ef6ff;
+  --neon-soft: #9af8ff;
+  --rose-glow: #ff4d6d;
+  --violet-mist: #8b5cff;
+  --glass-bg: rgb(16 18 40 / 0.75);
+  --glass-border: rgb(46 246 255 / 0.14);
+  --body-bg:
+    radial-gradient(1000px 520px at 0% 0%, rgb(255 43 214 / 0.18), transparent 55%),
+    radial-gradient(900px 500px at 100% 10%, rgb(46 246 255 / 0.14), transparent 50%),
+    radial-gradient(700px 480px at 50% 100%, rgb(139 92 255 / 0.18), transparent 55%),
+    linear-gradient(160deg, #05060f 0%, #0c1024 50%, #070812 100%);
+  --selection-bg: rgb(46 246 255 / 0.35);
+  --selection-fg: #041018;
+  --lyrics-wall: rgb(4 6 18 / 0.55);
+  color-scheme: dark;
+}
+
+[data-theme='daylight'] {
+  --stage-950: #e8eef6;
+  --stage-900: #f4f7fb;
+  --stage-850: #ffffff;
+  --stage-800: #e2e8f2;
+  --stage-700: #c9d3e3;
+  --stage-600: #8fa0b8;
+  --stage-400: #5b6b82;
+  --stage-200: #2c3a4f;
+  --stage-100: #152033;
+  --amp: #0f7a6b;
+  --amp-soft: #1aa890;
+  --neon: #2563eb;
+  --neon-soft: #3b82f6;
+  --rose-glow: #c2410c;
+  --violet-mist: #4f46e5;
+  --glass-bg: rgb(255 255 255 / 0.78);
+  --glass-border: rgb(21 32 51 / 0.1);
+  --body-bg:
+    radial-gradient(1100px 560px at 8% -8%, rgb(15 122 107 / 0.12), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgb(37 99 235 / 0.1), transparent 50%),
+    radial-gradient(700px 480px at 40% 110%, rgb(79 70 229 / 0.08), transparent 55%),
+    linear-gradient(165deg, #eef3f9 0%, #f8fafc 45%, #e8eef6 100%);
+  --selection-bg: rgb(15 122 107 / 0.28);
+  --selection-fg: #052e28;
+  --lyrics-wall: rgb(255 255 255 / 0.72);
+  color-scheme: light;
+}
+
+[data-theme='ember'] {
+  --stage-950: #100805;
+  --stage-900: #1a0e0a;
+  --stage-850: #24140e;
+  --stage-800: #2f1a12;
+  --stage-700: #4a2a1c;
+  --stage-600: #6b3d28;
+  --stage-400: #c4a08a;
+  --stage-200: #ead7c8;
+  --stage-100: #fff3ea;
+  --amp: #ff5a1f;
+  --amp-soft: #ff8f5c;
+  --neon: #ffc14d;
+  --neon-soft: #ffd88a;
+  --rose-glow: #e11d48;
+  --violet-mist: #fb7185;
+  --glass-bg: rgb(36 20 14 / 0.78);
+  --glass-border: rgb(255 90 31 / 0.16);
+  --body-bg:
+    radial-gradient(1100px 560px at 12% -10%, rgb(255 90 31 / 0.2), transparent 55%),
+    radial-gradient(800px 480px at 95% 5%, rgb(225 29 72 / 0.12), transparent 50%),
+    radial-gradient(700px 480px at 50% 110%, rgb(255 193 77 / 0.1), transparent 55%),
+    linear-gradient(165deg, #120906 0%, #1c0f0a 45%, #0e0705 100%);
+  --selection-bg: rgb(255 90 31 / 0.35);
+  --selection-fg: #fff;
+  --lyrics-wall: rgb(8 4 2 / 0.5);
+  color-scheme: dark;
+}
+
 @theme {
   --font-display: 'Syne', ui-sans-serif, sans-serif;
   --font-sans: 'Outfit', ui-sans-serif, sans-serif;
 
-  --color-stage-950: #07060c;
-  --color-stage-900: #0e0c16;
-  --color-stage-850: #15121f;
-  --color-stage-800: #1c1829;
-  --color-stage-700: #2a243a;
-  --color-stage-600: #3d3554;
-  --color-stage-400: #9b92b3;
-  --color-stage-200: #ddd7ec;
-  --color-stage-100: #f3effa;
+  --color-stage-950: var(--stage-950);
+  --color-stage-900: var(--stage-900);
+  --color-stage-850: var(--stage-850);
+  --color-stage-800: var(--stage-800);
+  --color-stage-700: var(--stage-700);
+  --color-stage-600: var(--stage-600);
+  --color-stage-400: var(--stage-400);
+  --color-stage-200: var(--stage-200);
+  --color-stage-100: var(--stage-100);
 
-  --color-amp: #ff8a3d;
-  --color-amp-soft: #ffb27a;
-  --color-neon: #3dffc0;
-  --color-neon-soft: #8affd9;
-  --color-rose-glow: #ff5d8f;
-  --color-violet-mist: #7b6cff;
+  --color-amp: var(--amp);
+  --color-amp-soft: var(--amp-soft);
+  --color-neon: var(--neon);
+  --color-neon-soft: var(--neon-soft);
+  --color-rose-glow: var(--rose-glow);
+  --color-violet-mist: var(--violet-mist);
 
   --animate-float-note: float-note 7s ease-in-out infinite;
   --animate-pulse-glow: pulse-glow 2.4s ease-in-out infinite;
@@ -42,10 +160,10 @@
 @keyframes pulse-glow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgb(255 138 61 / 0.35);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--amp) 35%, transparent);
   }
   50% {
-    box-shadow: 0 0 28px 4px rgb(255 138 61 / 0.28);
+    box-shadow: 0 0 28px 4px color-mix(in oklab, var(--amp) 28%, transparent);
   }
 }
 
@@ -73,20 +191,17 @@
   body {
     margin: 0;
     font-family: var(--font-sans);
-    color: var(--color-stage-100);
-    background:
-      radial-gradient(1200px 600px at 10% -10%, rgb(255 138 61 / 0.16), transparent 55%),
-      radial-gradient(900px 500px at 95% 0%, rgb(61 255 192 / 0.1), transparent 50%),
-      radial-gradient(700px 500px at 50% 110%, rgb(123 108 255 / 0.14), transparent 55%),
-      linear-gradient(165deg, #090711 0%, #120f1c 45%, #0a0912 100%);
+    color: var(--stage-100);
+    background: var(--body-bg);
     background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    transition: color 0.25s ease, background 0.35s ease;
   }
 
   ::selection {
-    background: rgb(255 138 61 / 0.35);
-    color: white;
+    background: var(--selection-bg);
+    color: var(--selection-fg);
   }
 
   button,
@@ -104,15 +219,19 @@
 
   .stage-grid {
     background-image:
-      linear-gradient(rgb(255 255 255 / 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px);
+      linear-gradient(color-mix(in oklab, var(--stage-100) 6%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in oklab, var(--stage-100) 6%, transparent) 1px, transparent 1px);
     background-size: 48px 48px;
   }
 
   .glass {
-    background: rgb(22 18 34 / 0.72);
-    border: 1px solid rgb(255 255 255 / 0.08);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
     backdrop-filter: blur(16px);
+  }
+
+  .lyrics-wall {
+    background: var(--lyrics-wall);
   }
 
   .tap-target {

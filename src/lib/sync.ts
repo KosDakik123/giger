@@ -228,7 +228,7 @@ export class LobbySync {
       if (this.mode === 'guest') {
         this.handlers.onStatus(
           'error',
-          'Lost lobby leader — ask them to keep BEND open, then rejoin.',
+          'Lost lobby leader — ask them to keep GIGer open, then rejoin.',
         )
       }
     })
@@ -349,9 +349,17 @@ function normalizeState(state: SyncState): SyncState {
     activeSongId: state.activeSongId,
     activeIndex: state.activeIndex ?? -1,
   })
+  const theme =
+    state.theme === 'stage' ||
+    state.theme === 'neon' ||
+    state.theme === 'daylight' ||
+    state.theme === 'ember'
+      ? state.theme
+      : 'stage'
   return {
     ...state,
     ...slot,
+    theme,
     revision: state.revision ?? 0,
     updatedAt: state.updatedAt ?? Date.now(),
   }
