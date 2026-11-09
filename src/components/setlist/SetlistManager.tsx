@@ -17,6 +17,7 @@ import {
   ArrowDown,
   ArrowUp,
   GripVertical,
+  HandMetal,
   Pencil,
   Play,
   Plus,
@@ -24,21 +25,26 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { SongEditorDialog } from '@/components/setlist/SongEditor'
+import { SuggestionsQueue } from '@/components/suggestions/SuggestionsQueue'
 import { Button } from '@/components/ui/button'
 import { formatBpm, uid } from '@/lib/utils'
-import type { Song } from '@/types'
+import type { Member, Song, SongSuggestion } from '@/types'
 
 interface SetlistManagerProps {
   songs: Song[]
   setlistOrder: string[]
   activeSongId: string | null
   activeIndex: number
+  suggestions: SongSuggestion[]
+  self: Member
   onReorder: (order: string[]) => void
   onPlaceAt: (songId: string, slot: number) => void
   onSaveSong: (song: Song) => void
   onDeleteSong: (id: string) => void
   onSelectSong: (id: string) => void
   onJumpToIndex: (index: number) => void
+  onSuggestSong: (songId: string) => void
+  onClearSuggestion: (songId: string) => void
 }
 
 const emptySong = (): Song => ({
@@ -49,6 +55,7 @@ const emptySong = (): Song => ({
   chords: '',
   key: '',
   tempo: 120,
+  feel: '',
   notes: '',
 })
 
@@ -57,12 +64,16 @@ export function SetlistManager({
   setlistOrder,
   activeSongId,
   activeIndex,
+  suggestions,
+  self,
   onReorder,
   onPlaceAt,
   onSaveSong,
   onDeleteSong,
   onSelectSong,
   onJumpToIndex,
+  onSuggestSong,
+  onClearSuggestion,
 }: SetlistManagerProps) {
   const [editing, setEditing] = useState<Song | null>(null)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
@@ -99,6 +110,15 @@ export function SetlistManager({
           <Plus className="h-4 w-4" /> Add
         </Button>
       </div>
+
+      <SuggestionsQueue
+        suggestions={suggestions}
+        songs={songs}
+        self={self}
+        onToggle={onSuggestSong}
+        onPlay={onSelectSong}
+        onClear={onClearSuggestion}
+      />
 
       {ordered.length > 0 ? (
         <div className="glass flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
@@ -144,12 +164,16 @@ export function SetlistManager({
                   index={index}
                   total={ordered.length}
                   active={song.id === activeSongId}
+                  suggested={suggestions.some(
+                    (s) => s.songId === song.id && s.backerIds.includes(self.id),
+                  )}
                   onSelect={() => onSelectSong(song.id)}
                   onEdit={() => setEditing(song)}
                   onDelete={() => onDeleteSong(song.id)}
                   onUp={() => move(song.id, -1)}
                   onDown={() => move(song.id, 1)}
                   onPlaceAt={(slot) => onPlaceAt(song.id, slot)}
+                  onSuggest={() => onSuggestSong(song.id)}
                 />
               ))}
             </ul>
@@ -174,23 +198,27 @@ function SortableSongRow({
   index,
   total,
   active,
+  suggested,
   onSelect,
   onEdit,
   onDelete,
   onUp,
   onDown,
   onPlaceAt,
+  onSuggest,
 }: {
   song: Song
   index: number
   total: number
   active: boolean
+  suggested: boolean
   onSelect: () => void
   onEdit: () => void
   onDelete: () => void
   onUp: () => void
   onDown: () => void
   onPlaceAt: (slot: number) => void
+  onSuggest: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: song.id,
@@ -232,10 +260,11 @@ function SortableSongRow({
               </span>
             ) : null}
           </p>
-          <p className="truncate text-xs text-stage-400">
-            {song.artist} · {song.key || 'Key —'} · {formatBpm(song.tempo)}
-          </p>
-        </button>
+        <p className="truncate text-xs text-stage-400">
+          {song.artist} · {song.key || 'Key —'} · {formatBpm(song.tempo)}
+          {song.feel ? ` · ${song.feel}` : ''}
+        </p>
+      </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-1 px-1 sm:px-0">
@@ -254,6 +283,16 @@ function SortableSongRow({
             ))}
           </select>
         </label>
+
+        <Button
+          variant={suggested ? 'default' : 'secondary'}
+          size="sm"
+          className="h-9"
+          onClick={onSuggest}
+          aria-label={`Want ${song.title} next`}
+        >
+          <HandMetal className="h-3.5 w-3.5" /> {suggested ? 'Voted' : 'Want'}
+        </Button>
 
         <Button
           variant="outline"

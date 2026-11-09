@@ -1,19 +1,20 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Crown } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Crown, Music2, Timer } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { MemberAvatar } from '@/components/avatars/MemberAvatar'
+import { SuggestionsQueue } from '@/components/suggestions/SuggestionsQueue'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { parseChordedLyrics } from '@/lib/lyrics'
-import { formatBpm } from '@/lib/utils'
 import { ROLE_FLAVOR } from '@/lib/roles'
-import type { Member, Song } from '@/types'
+import type { Member, Song, SongSuggestion } from '@/types'
 
 interface LiveViewerProps {
   song: Song | null
   songs: Song[]
   setlistOrder: string[]
+  suggestions: SongSuggestion[]
   scrollRatio: number
   showChords: boolean
   autoScroll: boolean
@@ -25,12 +26,15 @@ interface LiveViewerProps {
   onPrev: () => void
   onNext: () => void
   onJumpToIndex: (index: number) => void
+  onToggleSuggestion: (songId: string) => void
+  onPlaySuggestion: (songId: string) => void
 }
 
 export function LiveViewer({
   song,
   songs,
   setlistOrder,
+  suggestions,
   scrollRatio,
   showChords,
   autoScroll,
@@ -42,6 +46,8 @@ export function LiveViewer({
   onPrev,
   onNext,
   onJumpToIndex,
+  onToggleSuggestion,
+  onPlaySuggestion,
 }: LiveViewerProps) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const applyingRemote = useRef(false)
@@ -85,7 +91,7 @@ export function LiveViewer({
   }, [autoScroll, song?.id, onScrollRatio])
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
+    <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="glass flex items-center justify-between gap-3 rounded-2xl px-3 py-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -122,6 +128,52 @@ export function LiveViewer({
         </div>
       </div>
 
+      {/* Heads-up: tonalitet + rhythm — always visible for the active song */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="glass flex items-center gap-3 rounded-2xl border border-amp/30 px-3 py-3 sm:px-4">
+          <div className="rounded-xl bg-amp/15 p-2 text-amp">
+            <Music2 className="h-5 w-5 sm:h-6 sm:w-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amp-soft">
+              Tonalitet
+            </p>
+            <p className="truncate font-display text-2xl font-extrabold leading-none text-stage-100 sm:text-3xl">
+              {song?.key?.trim() || '—'}
+            </p>
+            <p className="truncate text-xs text-stage-400">key / scale</p>
+          </div>
+        </div>
+        <div className="glass flex items-center gap-3 rounded-2xl border border-neon/30 px-3 py-3 sm:px-4">
+          <div className="rounded-xl bg-neon/15 p-2 text-neon">
+            <Timer className="h-5 w-5 sm:h-6 sm:w-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neon-soft">
+              Rhythm
+            </p>
+            <p className="truncate font-display text-2xl font-extrabold leading-none text-stage-100 sm:text-3xl">
+              {song?.tempo ? `${song.tempo}` : '—'}
+              {song?.tempo ? (
+                <span className="ml-1 text-sm font-semibold text-stage-400">BPM</span>
+              ) : null}
+            </p>
+            <p className="truncate text-xs text-stage-400">
+              {song?.feel?.trim() || 'feel — set in song editor'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <SuggestionsQueue
+        compact
+        suggestions={suggestions}
+        songs={songs}
+        self={self}
+        onToggle={onToggleSuggestion}
+        onPlay={onPlaySuggestion}
+      />
+
       <div className="relative min-h-0 flex-1 overflow-hidden rounded-3xl border border-white/10 lyrics-wall stage-grid">
         <div
           className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-amp/10 to-transparent"
@@ -139,7 +191,7 @@ export function LiveViewer({
             {!song ? (
               <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
                 <p className="font-display text-2xl font-bold text-stage-100">Stage is quiet</p>
-                <p className="max-w-sm text-sm text-stage-300">
+                <p className="max-w-sm text-sm text-stage-400">
                   Add songs in the Setlist tab or pick one from the preset list to light up the
                   lyrics wall.
                 </p>
@@ -160,9 +212,7 @@ export function LiveViewer({
                   <h2 className="font-display text-3xl font-extrabold tracking-tight text-stage-100 sm:text-5xl">
                     {song.title}
                   </h2>
-                  <p className="mt-2 text-sm text-stage-300 sm:text-base">
-                    {song.artist} · {song.key || '—'} · {formatBpm(song.tempo)}
-                  </p>
+                  <p className="mt-2 text-sm text-stage-400 sm:text-base">{song.artist}</p>
                   {song.notes ? (
                     <p className="mx-auto mt-3 max-w-xl rounded-xl bg-white/5 px-3 py-2 text-sm text-amp-soft">
                       {song.notes}

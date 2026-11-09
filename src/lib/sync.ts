@@ -356,10 +356,16 @@ function normalizeState(state: SyncState): SyncState {
     state.theme === 'ember'
       ? state.theme
       : 'stage'
+  const songs = (state.songs ?? []).map((s) => ({
+    ...s,
+    feel: s.feel ?? '',
+  }))
   return {
     ...state,
     ...slot,
+    songs,
     theme,
+    suggestions: Array.isArray(state.suggestions) ? state.suggestions : [],
     revision: state.revision ?? 0,
     updatedAt: state.updatedAt ?? Date.now(),
   }

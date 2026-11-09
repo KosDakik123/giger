@@ -18,10 +18,13 @@ export default function App() {
         busy={s.busy}
         error={s.error}
         theme={s.theme}
+        rememberedBands={s.rememberedBands}
         onThemeChange={s.setLobbyTheme}
         onCreate={s.beginCreate}
         onJoin={s.beginJoin}
         onSolo={s.beginSolo}
+        onReopenBand={s.reopenBand}
+        onForgetBand={s.forgetRememberedBand}
       />
     )
   }
@@ -33,6 +36,9 @@ export default function App() {
         isLeader={s.pending.intent === 'host' || s.pending.intent === 'solo'}
         busy={s.busy}
         error={s.error}
+        rememberedName={
+          s.pendingMemory?.roster.find((m) => m.id === s.pendingMemory?.lastSelfId)?.name
+        }
         onSubmit={s.enterAsMember}
         onBack={s.backFromMember}
       />
@@ -98,6 +104,7 @@ export default function App() {
             song={s.activeSong}
             songs={s.state.songs}
             setlistOrder={s.state.setlistOrder}
+            suggestions={s.state.suggestions ?? []}
             scrollRatio={s.state.scrollRatio}
             showChords={s.state.showChords}
             autoScroll={s.state.autoScroll}
@@ -109,6 +116,8 @@ export default function App() {
             onPrev={() => s.shiftSong(-1)}
             onNext={() => s.shiftSong(1)}
             onJumpToIndex={s.jumpToIndex}
+            onToggleSuggestion={s.suggestSong}
+            onPlaySuggestion={s.selectSong}
           />
         ) : null}
 
@@ -118,12 +127,16 @@ export default function App() {
             setlistOrder={s.state.setlistOrder}
             activeSongId={s.state.activeSongId}
             activeIndex={s.state.activeIndex}
+            suggestions={s.state.suggestions ?? []}
+            self={s.self}
             onReorder={s.reorderSetlist}
             onPlaceAt={s.placeSongAt}
             onSaveSong={s.saveSong}
             onDeleteSong={s.deleteSong}
             onSelectSong={s.selectSong}
             onJumpToIndex={s.jumpToIndex}
+            onSuggestSong={s.suggestSong}
+            onClearSuggestion={s.clearSuggestion}
           />
         ) : null}
 

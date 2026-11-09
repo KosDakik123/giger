@@ -23,8 +23,11 @@ export interface Song {
   artist: string
   lyrics: string
   chords: string
+  /** Tonalitet — key / scale (e.g. Em, A major). */
   key: string
   tempo: number
+  /** Rhythm feel — e.g. "straight 4/4", "shuffle", "half-time". */
+  feel: string
   notes: string
 }
 
@@ -33,6 +36,16 @@ export interface LobbyMeta {
   pin: string
   peerId: string
   createdAt: number
+}
+
+/** Synced "want this next" votes — one entry per song, many backers. */
+export interface SongSuggestion {
+  songId: string
+  /** Member ids who want this next (order = first suggest time). */
+  backerIds: string[]
+  /** Display names snapshot for offline clarity. */
+  backerNames: string[]
+  updatedAt: number
 }
 
 export type ThemeId = 'stage' | 'neon' | 'daylight' | 'ember'
@@ -55,6 +68,8 @@ export interface SyncState {
   autoScroll: boolean
   /** Shared lobby look — Stage Dark, Neon Pit, Daylight, Ember. */
   theme: ThemeId
+  /** Live queue of "we want this next" suggestions. */
+  suggestions: SongSuggestion[]
   /** Monotonic revision — host bumps on every authoritative change. */
   revision: number
   updatedAt: number

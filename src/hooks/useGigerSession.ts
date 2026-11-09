@@ -1,7 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPresetSongs, defaultSetlistOrder } from '@/data/presets'
-import { clearSession, loadSession, saveSession, saveSoloState } from '@/lib/storage'
+import {
+  clearSession,
+  forgetBand,
+  listRememberedBands,
+  loadBandMemory,
+  loadSession,
+  rememberBand,
+  saveSession,
+  saveSoloState,
+  type BandMemory,
+} from '@/lib/storage'
 import { moveSongToSlot, withActiveSlot } from '@/lib/setlist'
+import { toggleSuggestion } from '@/lib/suggestions'
 import { LobbySync, type SyncStatus } from '@/lib/sync'
 import { DEFAULT_THEME, applyTheme, loadStoredTheme, type ThemeId } from '@/lib/themes'
 import { lobbyPeerId, uid } from '@/lib/utils'
@@ -38,6 +49,7 @@ export function useGigerSession() {
   const [state, setState] = useState<SyncState | null>(null)
   const [theme, setTheme] = useState<ThemeId>(() => loadStoredTheme())
   const [reacting, setReacting] = useState(false)
+  const [rememberedBands, setRememberedBands] = useState<BandMemory[]>(() => listRememberedBands())
   const prevSong = useRef<string | null>(null)
 
   useEffect(() => {
@@ -53,7 +65,8 @@ export function useGigerSession() {
   useEffect(() => {
     const saved = loadSession()
     if (!saved) return
-    setError(`Last lobby: ${saved.state.lobby.name}. Create/join again to reconnect.`)
+    // Soft hint — band memory holds songs/roster; rejoin with same name+PIN
+    setError(`Remembered band: ${saved.state.lobby.name}. Rejoin with the same name & PIN to pick up.`)
   }, [])
 
   useEffect(() => {
@@ -75,6 +88,8 @@ export function useGigerSession() {
           ? 'guest'
           : 'solo'
     saveSession({ mode, selfId: self.id, state })
+    rememberBand(state, self.id)
+    setRememberedBands(listRememberedBands())
     if (mode === 'solo') saveSoloState(state)
   }, [state, self])
 
@@ -133,6 +148,27 @@ export function useGigerSession() {
     setScreen('member-entry')
   }
 
+  const reopenBand = async (band: BandMemory) => {
+    setBusy(true)
+    setError(null)
+    try {
+      setPending({
+        name: band.name,
+        pin: band.pin,
+        peerId: band.peerId,
+        intent: band.peerId === 'solo' ? 'solo' : 'host',
+      })
+      setScreen('member-entry')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const pendingMemory = useMemo(
+    () => (pending ? loadBandMemory(pending.peerId) : null),
+    [pending],
+  )
+
   const enterAsMember = async (payload: {
     name: string
     role: Role
@@ -142,8 +178,13 @@ export function useGigerSession() {
     setBusy(true)
     setError(null)
 
+    const memory = loadBandMemory(pending.peerId)
+    const reusedId =
+      memory?.roster.find((m) => m.name.toLowerCase() === payload.name.toLowerCase())?.id ??
+      uid('member')
+
     const member: Member = {
-      id: uid('member'),
+      id: reusedId,
       name: payload.name,
       role: payload.role,
       avatarId: payload.avatarId,
@@ -151,26 +192,56 @@ export function useGigerSession() {
       joinedAt: Date.now(),
     }
 
-    const songs = createPresetSongs()
-    const setlistOrder = defaultSetlistOrder(songs)
+    const songs =
+      memory?.songs?.length && pending.intent !== 'guest'
+        ? memory.songs.map((s) => ({ ...s, feel: s.feel ?? '' }))
+        : createPresetSongs()
+    const setlistOrder = [
+      ...(memory?.setlistOrder?.length && pending.intent !== 'guest'
+        ? memory.setlistOrder.filter((id) => songs.some((s) => s.id === id))
+        : defaultSetlistOrder(songs)),
+    ]
+    for (const s of songs) {
+      if (!setlistOrder.includes(s.id)) setlistOrder.push(s.id)
+    }
+
     const slot = withActiveSlot(
-      { setlistOrder, activeSongId: songs[0]?.id ?? null, activeIndex: 0 },
+      { setlistOrder, activeSongId: setlistOrder[0] ?? null, activeIndex: 0 },
       { setlistOrder, activeIndex: 0 },
     )
+
+    // Seed roster from memory + self for host
+    const seedMembers: Member[] = [member]
+    if (memory?.roster && pending.intent === 'host') {
+      for (const r of memory.roster) {
+        if (r.id === member.id) continue
+        // keep remembered bandmates as offline placeholders until they rejoin
+        seedMembers.push({
+          id: r.id,
+          name: r.name,
+          role: r.role,
+          avatarId: r.avatarId,
+          isLeader: false,
+          joinedAt: Date.now() - 1,
+        })
+      }
+    }
+
     const initial: SyncState = {
       lobby: {
         name: pending.name,
         pin: pending.pin,
         peerId: pending.peerId,
-        createdAt: Date.now(),
+        createdAt: memory ? Date.now() : Date.now(),
       },
-      members: [member],
+      members: seedMembers,
       songs,
       ...slot,
       scrollRatio: 0,
       showChords: true,
       autoScroll: false,
-      theme: theme || DEFAULT_THEME,
+      theme: memory?.theme || theme || DEFAULT_THEME,
+      suggestions: memory?.suggestions ?? [],
       revision: 1,
       updatedAt: Date.now(),
     }
@@ -223,7 +294,6 @@ export function useGigerSession() {
       return
     }
 
-    // Optimistic UI for guests — host full-state will confirm/correct
     if (sync.getMode() === 'guest') {
       setState((prev) => {
         if (!prev) return prev
@@ -250,7 +320,9 @@ export function useGigerSession() {
       const slot = withActiveSlot(state, overrides)
       publish({
         ...slot,
-        scrollRatio: overrides.scrollRatio ?? (overrides.activeSongId || overrides.activeIndex !== undefined ? 0 : state.scrollRatio),
+        scrollRatio:
+          overrides.scrollRatio ??
+          (overrides.activeSongId || overrides.activeIndex !== undefined ? 0 : state.scrollRatio),
       })
     },
     [publish, state],
@@ -268,13 +340,11 @@ export function useGigerSession() {
 
   const activeSong = state?.songs.find((s) => s.id === state.activeSongId) ?? null
 
-  /** Jump live playback to a specific song (exact setlist selection). */
   const selectSong = (id: string) => {
     publishSlot({ activeSongId: id, scrollRatio: 0 })
     setTab('live')
   }
 
-  /** Jump live playback to an exact 0-based setlist index. */
   const jumpToIndex = (index: number) => {
     publishSlot({ activeIndex: index, scrollRatio: 0 })
     setTab('live')
@@ -287,12 +357,10 @@ export function useGigerSession() {
     publishSlot({ activeIndex: next, scrollRatio: 0 })
   }
 
-  /** Reorder whole setlist (drag/drop or arrows) and keep live slot lockstep. */
   const reorderSetlist = (order: string[]) => {
     publishSlot({ setlistOrder: order })
   }
 
-  /** Place a song at an exact slot number (0-based). Syncs to lobby. */
   const placeSongAt = (songId: string, slot: number) => {
     if (!state) return
     const setlistOrder = moveSongToSlot(state.setlistOrder, songId, slot)
@@ -301,10 +369,11 @@ export function useGigerSession() {
 
   const saveSong = (song: Song) => {
     if (!state) return
+    const normalized = { ...song, feel: song.feel ?? '' }
     const exists = state.songs.some((s) => s.id === song.id)
     const songs = exists
-      ? state.songs.map((s) => (s.id === song.id ? song : s))
-      : [...state.songs, song]
+      ? state.songs.map((s) => (s.id === song.id ? normalized : s))
+      : [...state.songs, normalized]
     const setlistOrder = exists ? state.setlistOrder : [...state.setlistOrder, song.id]
     publish({
       songs,
@@ -319,12 +388,28 @@ export function useGigerSession() {
     if (!state) return
     const songs = state.songs.filter((s) => s.id !== id)
     const setlistOrder = state.setlistOrder.filter((x) => x !== id)
+    const suggestions = (state.suggestions ?? []).filter((s) => s.songId !== id)
     publish({
       songs,
+      suggestions,
       ...withActiveSlot(state, {
         setlistOrder,
         activeSongId: state.activeSongId === id ? null : state.activeSongId,
       }),
+    })
+  }
+
+  const suggestSong = (songId: string) => {
+    if (!state || !self) return
+    publish({
+      suggestions: toggleSuggestion(state.suggestions ?? [], songId, self),
+    })
+  }
+
+  const clearSuggestion = (songId: string) => {
+    if (!state) return
+    publish({
+      suggestions: (state.suggestions ?? []).filter((s) => s.songId !== songId),
     })
   }
 
@@ -337,6 +422,8 @@ export function useGigerSession() {
   }
 
   const leave = () => {
+    // Persist band memory before tearing down session
+    if (state && self) rememberBand(state, self.id)
     syncRef.current?.leave()
     syncRef.current = null
     clearSession()
@@ -347,6 +434,12 @@ export function useGigerSession() {
     setStatusDetail(undefined)
     setScreen('landing')
     setError(null)
+    setRememberedBands(listRememberedBands())
+  }
+
+  const forgetRememberedBand = (peerId: string) => {
+    forgetBand(peerId)
+    setRememberedBands(listRememberedBands())
   }
 
   const backFromMember = () => {
@@ -364,14 +457,18 @@ export function useGigerSession() {
     status,
     statusDetail,
     pending,
+    pendingMemory,
     self,
     state,
     activeSong,
     reacting,
     theme,
+    rememberedBands,
     beginCreate,
     beginJoin,
     beginSolo,
+    reopenBand,
+    forgetRememberedBand,
     enterAsMember,
     backFromMember,
     publish,
@@ -383,6 +480,8 @@ export function useGigerSession() {
     placeSongAt,
     saveSong,
     deleteSong,
+    suggestSong,
+    clearSuggestion,
     setLobbyTheme,
     leave,
   }

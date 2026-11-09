@@ -24,7 +24,7 @@ export function SongEditorDialog({
   const [draft, setDraft] = useState<Song | null>(null)
 
   useEffect(() => {
-    setDraft(song ? { ...song } : null)
+    setDraft(song ? { ...song, feel: song.feel ?? '' } : null)
   }, [song])
 
   return (
@@ -60,7 +60,7 @@ export function SongEditorDialog({
               />
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Key">
+              <Field label="Key / tonalitet">
                 <Input
                   value={draft.key}
                   onChange={(e) => setDraft({ ...draft, key: e.target.value })}
@@ -76,6 +76,13 @@ export function SongEditorDialog({
                 />
               </Field>
             </div>
+            <Field label="Rhythm feel">
+              <Input
+                value={draft.feel ?? ''}
+                onChange={(e) => setDraft({ ...draft, feel: e.target.value })}
+                placeholder="straight 4/4 · shuffle · half-time"
+              />
+            </Field>
             <Field label="Chords summary">
               <Input
                 value={draft.chords}

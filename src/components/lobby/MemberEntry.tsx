@@ -12,6 +12,7 @@ interface MemberEntryProps {
   isLeader: boolean
   busy: boolean
   error: string | null
+  rememberedName?: string
   onSubmit: (payload: { name: string; role: Role; avatarId: AvatarId }) => void
   onBack: () => void
 }
@@ -21,10 +22,11 @@ export function MemberEntry({
   isLeader,
   busy,
   error,
+  rememberedName,
   onSubmit,
   onBack,
 }: MemberEntryProps) {
-  const [name, setName] = useState('')
+  const [name, setName] = useState(rememberedName ?? '')
   const [role, setRole] = useState<Role>('Guitar')
   const [avatarId, setAvatarId] = useState<AvatarId>(avatarForRole('Guitar'))
   const [localError, setLocalError] = useState<string | null>(null)

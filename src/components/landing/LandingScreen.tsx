@@ -1,31 +1,38 @@
 import { motion } from 'framer-motion'
-import { Headphones, KeyRound, Plus, Users } from 'lucide-react'
+import { Headphones, KeyRound, Plus, Trash2, Users } from 'lucide-react'
 import { useState } from 'react'
 import { FloatingNotes } from '@/components/decor/FloatingNotes'
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import type { BandMemory } from '@/lib/storage'
 import type { ThemeId } from '@/lib/themes'
 
 interface LandingScreenProps {
   busy: boolean
   error: string | null
   theme: ThemeId
+  rememberedBands: BandMemory[]
   onThemeChange: (theme: ThemeId) => void
   onCreate: (name: string, pin: string) => void
   onJoin: (name: string, pin: string) => void
   onSolo: () => void
+  onReopenBand: (band: BandMemory) => void
+  onForgetBand: (peerId: string) => void
 }
 
 export function LandingScreen({
   busy,
   error,
   theme,
+  rememberedBands,
   onThemeChange,
   onCreate,
   onJoin,
   onSolo,
+  onReopenBand,
+  onForgetBand,
 }: LandingScreenProps) {
   const [mode, setMode] = useState<'create' | 'join'>('create')
   const [name, setName] = useState('')
@@ -65,11 +72,48 @@ export function LandingScreen({
           GIGer
         </h1>
         <p className="mt-4 max-w-md text-base leading-relaxed text-stage-200">
-          One lobby. One setlist. Lyrics that stay in sync across every phone on stage — no app
-          install, just the browser.
+          Your band, setlist, and next-up votes stick around on this device — rejoin the same lobby
+          name & PIN and pick up where you left off.
         </p>
 
-        <div className="mt-6 glass rounded-3xl p-4">
+        {rememberedBands.length > 0 ? (
+          <div className="mt-6 glass rounded-3xl p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amp-soft">
+              Remembered bands
+            </p>
+            <ul className="space-y-2">
+              {rememberedBands.slice(0, 5).map((b) => (
+                <li
+                  key={b.peerId}
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-stage-900/40 px-3 py-2"
+                >
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    disabled={busy}
+                    onClick={() => onReopenBand(b)}
+                  >
+                    <p className="truncate font-display font-bold text-stage-100">{b.name}</p>
+                    <p className="truncate text-xs text-stage-400">
+                      {b.roster.length} members · {b.songs.length} songs · PIN {b.pin}
+                    </p>
+                  </button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-9 w-9 text-rose-glow"
+                    aria-label={`Forget ${b.name}`}
+                    onClick={() => onForgetBand(b.peerId)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        <div className="mt-4 glass rounded-3xl p-4">
           <ThemeSwitcher theme={theme} onChange={onThemeChange} />
         </div>
 
@@ -142,8 +186,7 @@ export function LandingScreen({
             <Headphones className="h-4 w-4" /> Practice solo (no sync)
           </Button>
           <p className="text-center text-xs text-stage-400">
-            Works on iOS, Android, and desktop browsers. Sync uses PeerJS when online; solo mode
-            always works offline with localStorage.
+            Band roster + songs save on this device. Live sync uses PeerJS when online.
           </p>
         </div>
       </motion.div>
